@@ -1,0 +1,58 @@
+
+name: Build 오늘의 운세 APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'oneul_fortune_android_project*.zip'
+      - '.github/workflows/build-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android SDK
+        run: |
+          yes | sdkmanager --licenses
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Install Gradle
+        run: |
+          curl -L https://services.gradle.org/distributions/gradle-8.9-bin.zip -o /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d /tmp
+          echo "/tmp/gradle-8.9/bin" >> "$GITHUB_PATH"
+
+      - name: Extract project
+        run: |
+          ZIP_FILE=$(find . -maxdepth 1 -type f -name 'oneul_fortune_android_project*.zip' | head -n 1)
+          test -n "$ZIP_FILE"
+          mkdir project
+          unzip -q "$ZIP_FILE" -d project
+
+      - name: Build APK
+        working-directory: project
+        run: gradle --no-daemon assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: oneul-fortune-debug-apk
+          path: project/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
