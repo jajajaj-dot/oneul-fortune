@@ -46,6 +46,29 @@ jobs:
           mkdir project
           unzip -q "$ZIP_FILE" -d project
 
+      - name: Fix JVM target
+        working-directory: project
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("app/build.gradle")
+          s = p.read_text()
+          marker = "    defaultConfig {"
+          patch = """    compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+
+              kotlinOptions {
+                  jvmTarget = '17'
+              }
+
+          """
+          if "kotlinOptions" not in s:
+              s = s.replace(marker, patch + marker, 1)
+          p.write_text(s)
+          PY
+
       - name: Build APK
         working-directory: project
         run: gradle --no-daemon assembleDebug
